@@ -10,6 +10,7 @@ system interactively, then downloads all tiles into an MBTiles SQLite file.
 """
 
 import argparse
+import logging
 import math
 import re
 import sqlite3
@@ -17,6 +18,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse, urlencode, parse_qs
 from urllib.request import Request, urlopen
 
 import requests
@@ -378,10 +380,20 @@ def download(
     headers: dict,
     meta: dict,
     retries: int,
+    log_file: str | None = None,
 ):
     total = count_tiles(bbox, zoom_min, zoom_max)
     w     = len(str(total))
     print(f"\nTiles to fetch: {total:,}  (zoom {zoom_min}–{zoom_max})")
+
+    logger = None
+    if log_file:
+        logger = logging.getLogger("tiles")
+        logger.setLevel(logging.DEBUG)
+        handler = logging.FileHandler(log_file, encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(message)s", "%Y-%m-%d %H:%M:%S"))
+        logger.addHandler(handler)
+        logger.info(f"START url={url_template} output={output} zoom={zoom_min}-{zoom_max} bbox={bbox}")
 
     conn    = init_db(output, meta)
     session = requests.Session()
@@ -413,8 +425,14 @@ def download(
                 batch.append((z, x, xyz_to_tms_y(y, z), data))
                 if len(batch) >= BATCH:
                     flush()
+                if logger:
+                    url = url_template.format(z=z, x=x, y=y)
+                    logger.info(f"OK   z={z} x={x} y={y} size={len(data)} {url}")
             else:
                 skipped += 1
+                if logger:
+                    url = url_template.format(z=z, x=x, y=y)
+                    logger.info(f"SKIP z={z} x={x} y={y} {url}")
 
             if done % 50 == 0 or done == total:
                 pct = done / total * 100
@@ -424,6 +442,10 @@ def download(
     if batch:
         flush()
     conn.close()
+
+    if logger:
+        logger.info(f"DONE written={done - skipped} skipped={skipped} output={output}")
+
     print(f"\nDone — wrote {done - skipped:,} tiles to {output}")
 
 
@@ -458,6 +480,7 @@ def parse_args():
         "--header", action="append", default=[], metavar="KEY:VALUE",
         help="Extra HTTP request header (repeatable)",
     )
+    dl.add_argument("--log", metavar="FILE", default=None, help="Log all tile results to FILE")
 
     meta = p.add_argument_group("MBTiles metadata overrides")
     meta.add_argument("--name",        default=None, help="Layer name (default: layer title)")
@@ -481,6 +504,13 @@ def main():
     # ── WMTS: layer + TMS selection ───────────────────────────────────────────
     root = load_capabilities(args.capabilities)
     layer, tms_id, tms_info, url_template = select_layer_and_tms(root)
+
+    # forward query parameters from the capabilities URL (e.g. api-key) to tile URLs
+    caps_params = parse_qs(urlparse(args.capabilities).query, keep_blank_values=True)
+    if caps_params:
+        flat = urlencode({k: v[0] for k, v in caps_params.items()})
+        sep  = "&" if "?" in url_template else "?"
+        url_template = url_template + sep + flat
 
     # ── bounding box ──────────────────────────────────────────────────────────
     def parse_latlon(value: str, flag: str) -> tuple[float, float]:
@@ -567,6 +597,7 @@ def main():
         headers=headers,
         meta=metadata,
         retries=args.retries,
+        log_file=args.log,
     )
 
 
