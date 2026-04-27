@@ -187,7 +187,7 @@ def _pick(prompt: str, items: list, label_fn) -> int:
 
 def _ask_float(prompt: str, lo: float, hi: float) -> float:
     while True:
-        raw = input(f"  {prompt} ({lo} to {hi}): ").strip()
+        raw = input(f"  {prompt} ({lo} to {hi}): ").strip().replace(",", ".")
         try:
             v = float(raw)
             if lo <= v <= hi:
@@ -221,8 +221,10 @@ def ask_bbox() -> tuple[float, float, float, float]:
 
 def ask_zoom(z_min_avail: int, z_max_avail: int) -> tuple[int, int]:
     print(f"\nAvailable zoom levels: {z_min_avail}–{z_max_avail}")
-    z_min = _ask_int("Min zoom", z_min_avail, z_max_avail, z_min_avail)
-    z_max = _ask_int("Max zoom", z_min,        z_max_avail, z_max_avail)
+    default_min = max(z_min_avail, min(3,  z_max_avail))
+    default_max = max(z_min_avail, min(15, z_max_avail))
+    z_min = _ask_int("Min zoom", z_min_avail, z_max_avail, default_min)
+    z_max = _ask_int("Max zoom", z_min,        z_max_avail, default_max)
     return z_min, z_max
 
 
@@ -514,11 +516,26 @@ def main():
 
     # ── bounding box ──────────────────────────────────────────────────────────
     def parse_latlon(value: str, flag: str) -> tuple[float, float]:
-        try:
-            lat, lon = value.split(",")
-            return float(lat.strip()), float(lon.strip())
-        except ValueError:
-            sys.exit(f"Error: {flag} must be LAT,LON (e.g. 60.35,24.78), got: {value!r}")
+        # accept "60.35,24.78", "60,35 24,78", "60,35,24,78", "60.35 24.78"
+        parts = value.strip().split()
+        if len(parts) == 2:
+            # space-separated: each part may use comma as decimal
+            try:
+                return float(parts[0].replace(",", ".")), float(parts[1].replace(",", "."))
+            except ValueError:
+                pass
+        else:
+            # comma-separated: 2 parts = period decimals, 4 parts = comma decimals
+            parts = value.strip().split(",")
+            try:
+                if len(parts) == 2:
+                    return float(parts[0].strip()), float(parts[1].strip())
+                elif len(parts) == 4:
+                    return float(f"{parts[0].strip()}.{parts[1].strip()}"), \
+                           float(f"{parts[2].strip()}.{parts[3].strip()}")
+            except ValueError:
+                pass
+        sys.exit(f"Error: {flag} must be LAT,LON (e.g. 60.35,24.78 or 60,35 24,78), got: {value!r}")
 
     if args.nw is not None and args.se is not None:
         nw_lat, nw_lon = parse_latlon(args.nw, "--nw")
@@ -578,7 +595,7 @@ def main():
         "name":        args.name or layer["title"],
         "description": args.description,
         "format":      fmt,
-        "type":        "baselayer",
+        "type":        "overlay",
         "version":     "1.1",
         "attribution": args.attribution,
         "minzoom":     zoom_min,
