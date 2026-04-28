@@ -4,7 +4,7 @@ set -euo pipefail
 
 IMAGE="minka:32000/kartat:latest"
 
-python generate_index.py --title "Kartat"
+python generate_index.py --title "Karta- ja ilmatilatiedostot"
 docker build -t "$IMAGE" .
 docker push "$IMAGE"
 kubectl rollout restart deployment/kartat -n kartat

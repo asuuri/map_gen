@@ -53,7 +53,7 @@ def file_rows(files: list[dict], data_attr: str = "") -> str:
             f'<tr {data_attr}>'
             f'<td class="fname"><a href="{f["rel"]}" download>{f["name"]}</a></td>'
             f'<td class="fsize">{fmt_size(f["size"])}</td>'
-            f'<td class="fdl"><a href="{f["rel"]}" download class="dl-btn" title="Download">↓</a></td>'
+            f'<td class="fdl"><a href="{f["rel"]}" download class="dl-btn" title="Lataa">↓</a></td>'
             f'</tr>'
         )
     return "\n".join(rows)
@@ -331,24 +331,24 @@ footer {{
 
   <header>
     <h1>{title}</h1>
-    <p class="stamp">Generated {now}</p>
+    <p class="stamp">Luotu {now}</p>
   </header>
 
   <nav class="tabs">
-    <button class="tab-btn" data-tab="mbt">
-      MBTiles — Basemap <span class="badge">{len(mbt)}</span>
+    <button class="tab-btn active" data-tab="mbt">
+      MBTiles — karttatiedostot <span class="badge">{len(mbt)}</span>
     </button>
-    <button class="tab-btn active" data-tab="kmz">
-      KMZ — Airspace Zones <span class="badge" id="kmz-count">{len(kmz)}</span>
+    <button class="tab-btn" data-tab="kmz">
+      KMZ — Ilmatila-alueet <span class="badge" id="kmz-count">{len(kmz)}</span>
     </button>
   </nav>
 
-  <div id="tab-mbt" class="tab-panel">
+  <div id="tab-mbt" class="tab-panel active">
     <table>
       <thead>
         <tr>
-          <th class="fname">File</th>
-          <th class="fsize">Size</th>
+          <th class="fname">Tiedosto</th>
+          <th class="fsize">Koko</th>
           <th class="fdl"></th>
         </tr>
       </thead>
@@ -358,17 +358,17 @@ footer {{
     </table>
   </div>
 
-  <div id="tab-kmz" class="tab-panel active">
+  <div id="tab-kmz" class="tab-panel">
     <div class="section-top">
       <div class="search-wrap">
-        <input id="kmz-search" type="search" placeholder="Filter…" autocomplete="off" spellcheck="false">
+        <input id="kmz-search" type="search" placeholder="Suodata…" autocomplete="off" spellcheck="false">
       </div>
     </div>
     <table id="kmz-table">
       <thead>
         <tr>
-          <th class="fname">Designator</th>
-          <th class="fsize">Size</th>
+          <th class="fname">Tunniste</th>
+          <th class="fsize">Koko</th>
           <th class="fdl"></th>
         </tr>
       </thead>
@@ -376,10 +376,10 @@ footer {{
         {file_rows(kmz)}
       </tbody>
     </table>
-    <p id="kmz-empty">No matches.</p>
+    <p id="kmz-empty">Ei osumia.</p>
   </div>
 
-  <footer>{len(kmz) + len(mbt)} file(s) &nbsp;·&nbsp; {title}</footer>
+  <footer>{len(kmz) + len(mbt)} tiedosto(t) &nbsp;·&nbsp; {title}</footer>
 
 </div>
 <script>
@@ -422,7 +422,7 @@ footer {{
 
 def main():
     p = argparse.ArgumentParser(description="Generate dist/ distribution site.")
-    p.add_argument("--title", default="Map Files", help="Page title")
+    p.add_argument("--title", default="Kartta- ja ilmatilatiedostot", help="Page title")
     args = p.parse_args()
 
     kmz = collect_kmz()
