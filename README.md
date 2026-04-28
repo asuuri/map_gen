@@ -164,3 +164,52 @@ Fetches from two endpoints for the given date:
 | `getzonesbynotam` | Airspace zones activated by NOTAM |
 
 Each zone becomes one file, named by its `designator` value (e.g. `EFD504F.kml`). KMZ files are standard ZIP archives containing `doc.kml`.
+
+---
+
+# generate-index
+
+Build a `dist/` distribution directory containing all KMZ and MBTiles files plus a self-contained `index.html` download page.
+
+## Requirements
+
+No external dependencies — stdlib only.
+
+## Usage
+
+```bash
+python generate_index.py [--title "My Map Files"]
+```
+
+The script:
+1. Copies `kmz/*.kmz` → `dist/kmz/`
+2. Copies `*.mbtiles` → `dist/`
+3. Writes `dist/index.html` — a dark-themed page with two tabs (MBTiles and KMZ) and a live filter input on the KMZ tab.
+
+## Options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--title TEXT` | `Map Files` | Page `<title>` and heading |
+
+---
+
+# deploy
+
+Generate the `dist/` site and push it to a web server via rsync.
+
+## Setup
+
+Edit the `DEST` variable at the top of `deploy.sh`:
+
+```bash
+DEST="user@example.com:/var/www/maps/"
+```
+
+## Usage
+
+```bash
+bash deploy.sh [--title "My Map Files"]
+```
+
+Any arguments are forwarded to `generate_index.py`. The script runs `generate_index.py` first, then syncs `dist/` to the remote destination with `rsync -avz --delete` (files removed locally are removed on the server too).

@@ -69,3 +69,24 @@ No external dependencies — stdlib only. Key details:
 - `hex_to_kml_color` converts `#rrggbb` + opacity to KML's `aabbggrr` format, preserving the API's fill/stroke colours.
 - Polygon rings are closed automatically if the first and last point don't match.
 - KMZ files are deflate-compressed ZIPs containing `doc.kml`.
+
+## generate_index.py
+
+Builds `./dist/` — copies KMZ files from `./kmz/` and `.mbtiles` files from the working directory into `dist/`, then writes `dist/index.html`.
+
+```bash
+python generate_index.py [--title "My Map Files"]
+```
+
+The HTML page has two tabs (MBTiles and KMZ) with a live filter input on the KMZ tab. All styling is self-contained inline CSS (dark theme). No external dependencies.
+
+## deploy.sh
+
+Runs `generate_index.py` (forwarding any arguments) then rsyncs `dist/` to a remote destination.
+
+```bash
+# Edit DEST in deploy.sh first, then:
+bash deploy.sh [--title "My Map Files"]
+```
+
+Set `DEST` at the top of the script (e.g. `user@host:/var/www/maps/`). Uses `rsync -avz --delete` so files removed locally are also removed on the server.
