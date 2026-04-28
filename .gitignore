@@ -1,0 +1,4 @@
+*.mbtiles
+
+kml/*
+!kml/.exists
