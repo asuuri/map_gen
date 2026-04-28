@@ -13,10 +13,12 @@ Python 3.10 or newer.
 ## Usage
 
 ```bash
-python mbtiles_downloader.py <WMTSCapabilities.xml URL or path> [output.mbtiles] [options]
+python mbtiles_downloader.py <api-key> [output.mbtiles] [options]
 ```
 
-The script fetches the capabilities document, walks you through selecting a layer and coordinate system, prompts for a bounding box and zoom range, then downloads all tiles into a single `.mbtiles` file.
+The script appends the API key to the capabilities URL, fetches the document, walks you through selecting a layer and coordinate system, prompts for a bounding box and zoom range, then downloads all tiles into a single `.mbtiles` file.
+
+The default capabilities URL points to the Finnish NLS (Maanmittauslaitos) WMTS service. Use `--capabilities` to target a different server.
 
 ## Example — Finnish NLS (Maanmittauslaitos)
 
@@ -25,8 +27,7 @@ Get your free API key from [maanmittauslaitos.fi](https://www.maanmittauslaitos.
 ### Fully interactive
 
 ```bash
-python mbtiles_downloader.py \
-  "https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/WMTSCapabilities.xml?api-key=<API-KEY>"
+python mbtiles_downloader.py <API-KEY>
 ```
 
 Example session:
@@ -77,9 +78,16 @@ Done — wrote 1,360 tiles to taustakartta.mbtiles
 Pass all options as flags to skip every prompt:
 
 ```bash
-python mbtiles_downloader.py \
-  "https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/WMTSCapabilities.xml?api-key=<API-KEY>" \
-  helsinki.mbtiles \
+python mbtiles_downloader.py <API-KEY> helsinki.mbtiles \
+  --nw 60.35,24.78 --se 60.10,25.25 \
+  --zoom-min 10 --zoom-max 14
+```
+
+### Custom WMTS server
+
+```bash
+python mbtiles_downloader.py <API-KEY> output.mbtiles \
+  --capabilities "https://example.com/wmts/WMTSCapabilities.xml" \
   --nw 60.35,24.78 --se 60.10,25.25 \
   --zoom-min 10 --zoom-max 14
 ```
@@ -88,15 +96,17 @@ python mbtiles_downloader.py \
 
 | Flag | Default | Description |
 |---|---|---|
-| `capabilities` | *(required)* | WMTSCapabilities.xml URL or local file path |
+| `api_key` | *(required)* | API key appended to the capabilities URL as `?api-key=` |
 | `output` | `<layer_id>.mbtiles` | Output file path |
+| `--capabilities URL` | NLS WMTS URL | WMTSCapabilities.xml URL or local file path |
 | `--nw LAT,LON` | *(prompted)* | NW (top-left) corner of bounding box |
 | `--se LAT,LON` | *(prompted)* | SE (bottom-right) corner of bounding box |
-| `--zoom-min` | *(prompted)* | Lowest zoom level to download |
-| `--zoom-max` | *(prompted)* | Highest zoom level to download |
-| `--workers` | `8` | Parallel download threads |
-| `--retries` | `3` | Retry attempts per failed tile |
+| `--zoom-min Z` | *(prompted)* | Lowest zoom level to download |
+| `--zoom-max Z` | *(prompted)* | Highest zoom level to download |
+| `--workers N` | `8` | Parallel download threads |
+| `--retries N` | `3` | Retry attempts per failed tile |
 | `--header KEY:VALUE` | — | Extra HTTP request header (repeatable) |
+| `--log FILE` | — | Log all tile results (OK/SKIP) to FILE |
 | `--name` | layer title | Override MBTiles `name` metadata field |
 | `--description` | — | MBTiles `description` metadata field |
 | `--attribution` | — | MBTiles `attribution` metadata field |
@@ -106,6 +116,8 @@ python mbtiles_downloader.py \
 The bounding box is defined by two corner points in decimal degrees (WGS-84):
 - **NW** — north-west (top-left): `LAT,LON` where LAT is the northern edge and LON is the western edge
 - **SE** — south-east (bottom-right): `LAT,LON` where LAT is the southern edge and LON is the eastern edge
+
+Both comma-decimal (`60,35,24,78`) and period-decimal (`60.35,24.78`) formats are accepted, as is space-separated (`60.35 24.78`).
 
 | City | `--nw` | `--se` |
 |---|---|---|

@@ -3,9 +3,10 @@
 Download WMTS map tiles and create an MBTiles file.
 
 Usage:
-  python mbtiles_downloader.py <WMTSCapabilities.xml URL or path> [output.mbtiles] [options]
+  python mbtiles_downloader.py <api-key> [output.mbtiles] [options]
 
-The script fetches the capabilities, lets you pick a layer and coordinate
+The script fetches the capabilities from the Maanmittauslaitos WMTS service
+(or a custom URL via --capabilities), lets you pick a layer and coordinate
 system interactively, then downloads all tiles into an MBTiles SQLite file.
 """
 
@@ -453,18 +454,28 @@ def download(
 
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
+DEFAULT_CAPABILITIES_URL = (
+    "https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0/WMTSCapabilities.xml"
+)
+
+
 def parse_args():
     p = argparse.ArgumentParser(
         description="Download WMTS tiles and create an MBTiles file.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     p.add_argument(
-        "capabilities",
-        help="WMTSCapabilities.xml URL or local file path",
+        "api_key",
+        help="API key for the WMTS service",
     )
     p.add_argument(
         "output", nargs="?", default=None,
         help="Output .mbtiles path (default: <layer_id>.mbtiles)",
+    )
+    p.add_argument(
+        "--capabilities", default=DEFAULT_CAPABILITIES_URL,
+        metavar="URL",
+        help="WMTSCapabilities.xml URL or local file path",
     )
 
     bbox = p.add_argument_group("bounding box (prompted interactively if omitted)")
@@ -503,12 +514,17 @@ def main():
         k, _, v = h.partition(":")
         headers[k.strip()] = v.strip()
 
+    # ── build capabilities URL with api-key ───────────────────────────────────
+    caps_url = args.capabilities
+    sep = "&" if "?" in caps_url else "?"
+    caps_url = f"{caps_url}{sep}api-key={args.api_key}"
+
     # ── WMTS: layer + TMS selection ───────────────────────────────────────────
-    root = load_capabilities(args.capabilities)
+    root = load_capabilities(caps_url)
     layer, tms_id, tms_info, url_template = select_layer_and_tms(root)
 
     # forward query parameters from the capabilities URL (e.g. api-key) to tile URLs
-    caps_params = parse_qs(urlparse(args.capabilities).query, keep_blank_values=True)
+    caps_params = parse_qs(urlparse(caps_url).query, keep_blank_values=True)
     if caps_params:
         flat = urlencode({k: v[0] for k, v in caps_params.items()})
         sep  = "&" if "?" in url_template else "?"
