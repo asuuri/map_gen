@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-Fetch active AUP/TEMPO airspace zones from the Fintraffic Sky API and write
+Fetch active airspace zones from the Fintraffic Sky API and write
 one KML file per entry into a ./kml/ directory.
+
+Fetches from two endpoints:
+  - getaipsuptempozonesactivatedbynotam  (AUP/TEMPO zones)
+  - getzonesbynotam                      (NOTAM zones)
 
 Usage:
   python airspace_to_kml.py [date]          # date defaults to today (MM/DD/YYYY)
@@ -11,26 +15,31 @@ Usage:
 import json
 import os
 import sys
+import zipfile
 from datetime import date
 from urllib.request import Request, urlopen
 
-API_URL = (
-    "https://api.sky.fintraffic.fi/api/airspace/getaipsuptempozonesactivatedbynotam"
-    "?date={date}"
-)
+API_URLS = [
+    "https://api.sky.fintraffic.fi/api/airspace/getaipsuptempozonesactivatedbynotam?date={date}",
+    "https://api.sky.fintraffic.fi/api/airspace/getzonesbynotam?date={date}",
+]
 KML_DIR = "kml"
+KMZ_DIR = "kmz"
 
 
 def fetch_zones(query_date: str) -> list:
-    url = API_URL.format(date=query_date)
-    print(f"Fetching {url} …")
-    req = Request(url, headers={"User-Agent": "airspace-kml/1.0", "Accept": "application/json"})
-    with urlopen(req, timeout=20) as r:
-        payload = json.loads(r.read())
-    if payload.get("error"):
-        msgs = payload.get("errorMessages") or []
-        sys.exit("API error: " + "; ".join(msgs))
-    return payload.get("data", [])
+    zones = []
+    for template in API_URLS:
+        url = template.format(date=query_date)
+        print(f"Fetching {url} …")
+        req = Request(url, headers={"User-Agent": "airspace-kml/1.0", "Accept": "application/json"})
+        with urlopen(req, timeout=20) as r:
+            payload = json.loads(r.read())
+        if payload.get("error"):
+            msgs = payload.get("errorMessages") or []
+            sys.exit("API error: " + "; ".join(msgs))
+        zones.extend(payload.get("data", []))
+    return zones
 
 
 def parse_coords(coord_str: str) -> list[tuple[float, float]]:
@@ -110,6 +119,7 @@ def main():
         return
 
     os.makedirs(KML_DIR, exist_ok=True)
+    os.makedirs(KMZ_DIR, exist_ok=True)
 
     written = 0
     skipped = 0
@@ -125,12 +135,18 @@ def main():
             continue
 
         safe_name = designator.replace("/", "_").replace("\\", "_")
-        path = os.path.join(KML_DIR, f"{safe_name}.kml")
-        with open(path, "w", encoding="utf-8") as f:
+
+        kml_path = os.path.join(KML_DIR, f"{safe_name}.kml")
+        with open(kml_path, "w", encoding="utf-8") as f:
             f.write(kml)
+
+        kmz_path = os.path.join(KMZ_DIR, f"{safe_name}.kmz")
+        with zipfile.ZipFile(kmz_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("doc.kml", kml)
+
         written += 1
 
-    print(f"Written {written} KML files to ./{KML_DIR}/  ({skipped} skipped)")
+    print(f"Written {written} KML/KMZ files to ./{KML_DIR}/ and ./{KMZ_DIR}/  ({skipped} skipped)")
 
 
 if __name__ == "__main__":

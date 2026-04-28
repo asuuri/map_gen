@@ -2,3 +2,6 @@
 
 kml/*
 !kml/.exists
+
+kmz/*
+!kmz/.exists
