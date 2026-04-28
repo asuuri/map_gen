@@ -55,7 +55,7 @@ Standard SQLite file with `metadata` and `tiles` tables. WAL mode + NORMAL synch
 
 ## airspace_to_kml.py
 
-Fetches active AUP/TEMPO airspace zones from the Fintraffic Sky API and writes one KML file per zone into `./kml/`, named by `designator`.
+Fetches active airspace zones from two Fintraffic Sky API endpoints and writes one KML file per zone into `./kml/` and one KMZ file into `./kmz/`, both named by `designator`.
 
 ```bash
 python airspace_to_kml.py [MM/DD/YYYY]   # defaults to today
@@ -64,7 +64,8 @@ python airspace_to_kml.py 04/28/2026
 
 No external dependencies — stdlib only. Key details:
 
+- Fetches `getaipsuptempozonesactivatedbynotam` and `getzonesbynotam`; results are merged. If the same designator appears in both, the second overwrites the first.
 - API returns coordinates as `"lat lon,lat lon,…"`; `parse_coords` swaps to KML's `lon,lat,alt` order.
 - `hex_to_kml_color` converts `#rrggbb` + opacity to KML's `aabbggrr` format, preserving the API's fill/stroke colours.
 - Polygon rings are closed automatically if the first and last point don't match.
-- Each KML `<description>` is set to the designator value.
+- KMZ files are deflate-compressed ZIPs containing `doc.kml`.

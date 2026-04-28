@@ -132,3 +132,35 @@ Both comma-decimal (`60,35,24,78`) and period-decimal (`60.35,24.78`) formats ar
 - **Rate limiting** — the default 8 worker threads are a reasonable balance. Reduce with `--workers` if the server returns HTTP 429 errors.
 - **Coordinate system** — the script works correctly with Web Mercator (EPSG:3857) tile matrix sets. When a non-Mercator CRS is selected, a warning is shown as tile coordinates may not align with the given WGS-84 bounding box.
 - **MBTiles Y axis** — MBTiles uses TMS tile convention (Y origin at bottom). The script flips the XYZ Y coordinate automatically before writing to the database.
+
+---
+
+# airspace-to-kml
+
+Fetch active airspace zones from the [Fintraffic Sky API](https://api.sky.fintraffic.fi) and write one KML and KMZ file per zone.
+
+## Requirements
+
+No external dependencies — stdlib only.
+
+## Usage
+
+```bash
+python airspace_to_kml.py [MM/DD/YYYY]   # date defaults to today
+python airspace_to_kml.py 04/28/2026
+```
+
+Output is written to:
+- `kml/<designator>.kml`
+- `kmz/<designator>.kmz`
+
+## Data sources
+
+Fetches from two endpoints for the given date:
+
+| Endpoint | Content |
+|---|---|
+| `getaipsuptempozonesactivatedbynotam` | AUP/TEMPO zones activated by NOTAM |
+| `getzonesbynotam` | Airspace zones activated by NOTAM |
+
+Each zone becomes one file, named by its `designator` value (e.g. `EFD504F.kml`). KMZ files are standard ZIP archives containing `doc.kml`.
